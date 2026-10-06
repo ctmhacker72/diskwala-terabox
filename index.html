@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>DiskWala → TeraBox</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#0b1020;color:#eef2ff}
+  .wrap{max-width:720px;margin:auto;padding:28px 18px 50px}
+  .card{background:#151c31;border:1px solid #293452;border-radius:22px;padding:20px;box-shadow:0 12px 40px #0004}
+  h1{font-size:27px;margin:0 0 8px}
+  .sub{color:#aeb9d6;line-height:1.45;margin-bottom:22px}
+  label{display:block;font-size:14px;color:#c8d2eb;margin:14px 0 7px}
+  input{width:100%;padding:15px;border-radius:13px;border:1px solid #35415f;background:#0d1427;color:white;font-size:16px;outline:none}
+  button{width:100%;margin-top:14px;padding:15px;border:0;border-radius:13px;font-size:16px;font-weight:700;background:#5b7cfa;color:white}
+  button.secondary{background:#263352}
+  button:disabled{opacity:.55}
+  .status{margin-top:18px;padding:14px;border-radius:13px;background:#0d1427;color:#b9c5df;white-space:pre-wrap}
+  .result{margin-top:14px}
+  .link{word-break:break-all;background:#0d1427;padding:12px;border-radius:12px;margin-top:8px;font-size:13px;color:#9ec5ff}
+  .small{font-size:12px;color:#8793b1;margin-top:14px;line-height:1.5}
+  .ok{color:#8ee0b0}.warn{color:#ffd27c}.err{color:#ff9c9c}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>DiskWala → TeraBox</h1>
+    <div class="sub">Mobile-friendly link resolver. Start by resolving the DiskWala link; TeraBox upload is connected separately through the official Open Platform.</div>
+
+    <label for="url">DiskWala URL</label>
+    <input id="url" value="https://www.diskwala.com/app/6ab90b492a52418b2420da67" placeholder="Paste DiskWala URL">
+
+    <button id="resolve">Resolve DiskWala Link</button>
+    <button id="tb" class="secondary">Connect TeraBox</button>
+
+    <div id="status" class="status">Ready.</div>
+    <div id="result" class="result"></div>
+    <div class="small">
+      Your TeraBox password is not collected by this app. Official TeraBox integration requires application credentials and user authorization.
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+$("resolve").onclick = async () => {
+  const url = $("url").value.trim();
+  $("resolve").disabled = true;
+  $("status").textContent = "Resolving DiskWala link…";
+  $("result").innerHTML = "";
+  try {
+    const r = await fetch("/api/resolve", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({url})
+    });
+    const data = await r.json();
+    if (!r.ok || !data.ok) throw new Error(data.error || "Resolve failed");
+    $("status").innerHTML = `<span class="ok">Done.</span> ${data.note}`;
+    if (data.title) $("result").innerHTML += `<div class="small">Page: ${escapeHtml(data.title)}</div>`;
+    if (data.directLinks?.length) {
+      $("result").innerHTML += data.directLinks.map((x,i)=>
+        `<div class="link"><b>Candidate ${i+1}</b><br>${escapeHtml(x)}<br>
+        <button class="secondary" onclick="window.open(${JSON.stringify(x)},'_blank')">Open</button></div>`
+      ).join("");
+    }
+  } catch(e) {
+    $("status").innerHTML = `<span class="err">${escapeHtml(e.message)}</span>`;
+  } finally { $("resolve").disabled = false; }
+};
+$("tb").onclick = () => { window.location.href="/oauth/terabox/start"; };
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));}
+</script>
+</body>
+</html>
